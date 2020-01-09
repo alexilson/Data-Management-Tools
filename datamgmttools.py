@@ -5,9 +5,15 @@
 #last updated 12/27/18
 
 import pypyodbc, pandas as pd, sys, os
+import asana
 from openpyxl import load_workbook
 from subprocess import call
 from shutil import copy2
+
+
+asanaAuth = '0/0fec0d145ba4d0cb4d4b0cf0cb8966a3'
+asanaWorkspace = '9831877553179'
+asanaTeam = '41652546591765'
 
 def connectEDM():
     #Attempt to connect to EDM and create connect object
@@ -116,9 +122,17 @@ def queryAndAppend(EDMConnection, inQuery, outputFilename, headerNames, workshee
 
 def runFIS_Export():
     try:
-        call(r"c:\FIS_Export\pyBatch.bat")
+        call(r"c:\FIS_Export_Prod\ERSUIInterface.exe -usePK 0 -region ALL -startOffset 1 -endOffset 0")
     except Exception as e:
         print("Error", e)
+
+#Runs the FIS Export batch file on the local C: drive
+def FIS_Export():
+    print('you picked to run the FIS Export')
+    params = [r"C:\FIS_Export_Prod\Batch.bat"]
+    print(subprocess.check_call(params))
+    print("Process complete, returning to main menu.")
+    return
 
 def copyFIS_ExportForDataCheck():
     sourceFolder = r'C:\FIS_Export\output'
@@ -128,3 +142,24 @@ def copyFIS_ExportForDataCheck():
         copy2(os.path.join(newFolder, j), oldFolder)
     for i in os.listdir(sourceFolder):
         copy2(os.path.join(sourceFolder, i), newFolder)
+
+def asanaConnect():
+    client = asana.Client.access_token(asanaAuth)
+    return client
+
+def asanaCreateProject(client, name):
+    projectIn = {'name': name, 'workspace': asanaWorkspace, 'team': asanaTeam}
+    project = client.projects.create(projectIn)
+    return project['gid']
+
+def asanaCreateTask(client, projectID, parameters):
+    task = client.tasks.create_in_workspace(asanaWorkspace, parameters)
+    return task['gid']
+
+def asanaCreateTaskWorkspace(client, projectID, parameters):
+    task = client.tasks.add_project(projectID, parameters)
+    return task['gid']
+
+def asanaCreateSubtask(client, taskID, name):
+    subtask = client.tasks.add_subtask(taskID, {'name': name, 'assignee': '1156312730595801'})
+    return subtask
